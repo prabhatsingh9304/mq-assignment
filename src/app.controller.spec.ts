@@ -11,7 +11,6 @@ import { Readable } from "stream";
 import { MailerModule } from "@nestjs-modules/mailer";
 import { MailService } from "./mail.service";
 
-
 const mockUserModel = jest.fn().mockImplementation((userData) => {
   return {
     save: jest.fn().mockImplementation(() => {

@@ -5,6 +5,7 @@ import {
   Delete,
   Get,
   NotFoundException,
+  InternalServerErrorException,
   Param,
   Post,
   Res,
@@ -58,7 +59,7 @@ export class AppController {
       if (e.response.status === 404) {
         throw new NotFoundException();
       }
-      throw e;
+      throw new InternalServerErrorException();
     }
   }
 
