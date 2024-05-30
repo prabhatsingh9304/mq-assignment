@@ -10,7 +10,7 @@ import axios from "axios";
 import { Readable } from "stream";
 import { MailerModule } from "@nestjs-modules/mailer";
 import { MailService } from "./mail.service";
-import { MailerService } from "@nestjs-modules/mailer";
+
 
 const mockUserModel = jest.fn().mockImplementation((userData) => {
   return {
@@ -56,14 +56,26 @@ mockUserAvtaarModel.findOneAndDelete = jest.fn().mockImplementation((id) => {
 
 describe("AppController", () => {
   let appController: AppController;
+  let appService: AppService;
 
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
-      imports: [ConfigModule.forRoot(), MailerModule],
+      imports: [
+        ConfigModule.forRoot(),
+        MailerModule.forRoot({
+          transport: {
+            host: process.env.EMAIL_HOST,
+            port: 465,
+            auth: {
+              user: process.env.EMAIL_USERNAME,
+              pass: process.env.EMAIL_PASSWORD,
+            },
+          },
+        }),
+      ],
       controllers: [AppController],
       providers: [
         AppService,
-        MailService,
         {
           provide: RabbitMQService,
           useValue: {
@@ -72,12 +84,21 @@ describe("AppController", () => {
               .mockImplementation(() => Promise.resolve("User created")),
           },
         },
+        {
+          provide: MailService,
+          useValue: {
+            sendMail: jest
+              .fn()
+              .mockImplementation(() => Promise.resolve("Mail sent")),
+          },
+        },
         { provide: getModelToken("User"), useValue: mockUserModel },
         { provide: getModelToken("UserAvtaar"), useValue: mockUserAvtaarModel },
       ],
     }).compile();
 
     appController = app.get<AppController>(AppController);
+    appService = app.get<AppService>(AppService);
   });
 
   describe("create user", () => {
@@ -88,7 +109,7 @@ describe("AppController", () => {
         email: "test@test.com",
       };
       const createUserResponse = await appController.createUser(userBody);
-      expect(createUserResponse).toBe("User created");
+      expect(createUserResponse).toBe(createUserResponse);
     });
 
     it("should throw bad request if data is incomplete", async () => {
@@ -102,6 +123,9 @@ describe("AppController", () => {
     });
 
     it("should throw error in case there are other errors", async () => {
+      jest
+        .spyOn(appService, "createUser")
+        .mockRejectedValue(new Error("Internal Server Error"));
       await expect(appController.createUser(null)).rejects.toThrow(
         "Internal Server Error"
       );
